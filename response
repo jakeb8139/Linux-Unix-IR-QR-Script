@@ -1,0 +1,168 @@
+#!/bin/bash
+#IR Collection Script
+#By Jake Burch DFOR660
+clear
+echo "This script collects critical volatile and non-volatile data"
+read -p "Do you wish to continue?" answer
+
+#Case Statement
+case $answer in
+Y|y|yes|YES|Yes) echo " ";;
+N|n|no|NO|No) exit;;
+*) echo "You must enter yes or no"; read -p "Press any key to Exit"; clear; exit;;
+esac
+
+#Get Investigation Info
+read -p "Investigator's Name: " name
+read -p "Case Name: " case_name
+read -p "Date: " current_date
+read -p "Time: " current_time
+comp_date=`date`
+location=`pwd`
+read -p "What is the folder name to store the output? " collect
+
+start=`date +%s`
+
+#User Input Checking for Directory v. Creating Directory
+if [ -d ./$collect ]
+then 
+	echo "Writing to $collect"
+else
+	mkdir $location/data/$collect
+	echo "Directory created..."
+fi
+
+
+#General Case Info Stored in case.dat
+echo "Begin Data Collection..."
+echo "System Date and Time"
+$location/tools/date >> $location/data/$collect/case.dat
+echo "------------------------------------------------------------" >> $location/data/$collect/case.dat
+echo "Recording Hostname"
+echo -en "\n" >> $location/data/$collect/case.dat
+$location/tools/hostname >> $location/data/$collect/case.dat
+echo "hostname" >> $location/data/$collect/record.txt
+echo "date" >> $location/data/$collect/record.txt
+
+echo "Recording OS Type and Version"
+echo -en "\n" >> $location/data/$collect/case.dat
+echo "OS Type and Version:" >> $location/data/$collect/case.dat
+$location/tools/cat /etc/os-release >> $location/data/$collect/case.dat
+echo "cat /etc/os-release" >> $location/data/$collect/record.txt
+
+echo "Who is logged in"
+echo -en "\n" >> $location/data/$collect/case.dat
+echo "Who is logged in:" >> $location/data/$collect/case.dat
+$location/tools/w >> $location/data/$collect/case.dat
+echo "w" >> $location/data/$collect/record.txt
+
+echo "Recording all Users:"
+echo -en "\n" >> $location/data/$collect/case.dat
+echo "All Users on System" >> $location/data/$collect/case.dat
+$location/tools/cat /etc/passwd >> $location/data/$collect/case.dat
+echo "cat /etc/passwd" >> $location/data/$collect/record.txt
+
+
+
+#Get_Netstat
+echo "Recording Netstat -ano "
+$location/tools/netstat -ano >> $location/data/$collect/netstat.dat
+echo "netstat -ano" >> $location/data/$collect/record.txt
+
+#Get_Open_Ports
+echo "Recording Netstat -np "
+$location/tools/netstat -np >> $location/data/$collect/openports.dat
+echo "netstat -np" >> $location/data/$collect/record.txt
+
+#Get_SS
+echo "Recording apps associated with open ports"
+$location/tools/ss -anp >> $location/data/$collect/SS.dat
+echo "ss -anp" >> $location/data/$collect/record.txt
+
+#Get_ARP
+echo "Recording ARP Cache"
+$location/tools/arp -a > $location/data/$collect/ARP.dat
+echo "arp -a" >> $location/data/$collect/record.txt
+
+#Get_Routing
+echo "Recording Routing Table"
+echo "Netstat -rn:" > $location/data/$collect/routing.dat
+$location/tools/netstat -rn >> $location/data/$collect/routing.dat
+echo -en "\nIP route list:\n" >> $location/data/$collect/routing.dat
+$location/tools/ip route list >> $location/data/$collect/routing.dat
+echo "netstat -rn" >> $location/data/$collect/record.txt
+echo "ip route list" >> $location/data/$collect/record.txt
+
+#Get_SystemMessages
+echo "Recording System Messages "
+$location/tools/dmesg >> $location/data/$collect/dmesg.dat
+echo "dmesg" >> $location/data/$collect/record.txt
+
+#Get_Openfiles
+echo "Recording OpenFiles"
+$location/tools/lsof -n >> $location/data/$collect/openfiles.dat 2> $location/data/$collect/openfiles.err
+echo "lsof -n" >> $location/data/$collect/record.txt
+
+#Get_Processes
+echo "Recording All Processes"
+echo "ps -aux:" > $location/data/$collect/processes.dat
+$location/tools/ps -aux >> $location/data/$collect/processes.dat
+echo -en "\nps -elf\n:" >> $location/data/$collect/processes.dat
+$location/tools/ps -elf >> $location/data/$collect/processes.dat
+echo "ps -aux" >> $location/data/$collect/record.txt
+echo "ps -elf" >> $location/data/$collect/record.txt
+
+#Get_IFConfig
+echo "Recording Internet Protocol Information"
+echo "ifconfig -a" > $location/data/$collect/ipinfo.txt
+$location/tools/ifconfig -a >> $location/data/$collect/ipinfo.txt
+echo -en "\nIP addr show:\n:" >> $location/data/$collect/ipinfo.txt
+$location/tools/ip addr show >> $location/data/$collect/ipinfo.txt
+echo "ifconfig -a" >> $location/data/$collect/record.txt
+echo "ip addr show" >> $location/data/$collect/record.txt
+
+#Get_LS
+echo "Recording Directory (ls / -alhR) "
+$location/tools/ls / -alhR >> $location/data/$collect/ls.dat 2> $location/data/$collect/directory1.err
+echo "ls / -alhR" >> $location/data/$collect/record.txt
+
+#Get_Mounted
+echo "Recording Mounted Devices"
+$location/tools/mount > $location/data/$collect/mounted.dat
+echo "mount" >> $location/data/$collect/record.txt
+
+#Get_KLM
+echo "Recording Kernel Loaded Modules"
+$location/tools/lsmod > $location/data/$collect/KLM.dat
+echo "lsmod" >> $location/data/$collect/record.txt
+
+#Get_etc/passwd
+echo "Copying the etc/passwd file"
+$location/tools/cp /etc/passwd $location/data/$collect/
+echo "cp /etc/passwd" >> $location/data/$collect/record.txt
+
+#Get_var/log/
+echo "Copying the var/log file"
+$location/tools/cp -R /var/log $location/data/$collect/
+echo "cp -R /var/log" >> $location/data/$collect/record.txt
+
+echo "Collecting System Variables"
+set >> $location/data/$collect/sysvar.dat
+echo "set >> location/data/$collect/sysvar.dat" >> $location/data/$collect/record.txt
+
+$location/tools/date >> $location/data/$collect/case.dat
+echo "date" >> $location/data/$collect/record.txt
+
+find $location/data/$collect -type f -exec md5sum {} + > $location/data/$collect/hash.md5
+echo "find $location/data/$collect -type f -exec md5sum {} + > $location/data/$collect/hash.md5" >> $location/data/$collect/record.txt
+
+echo "Hashes stored in hash.md5"
+
+
+finish=`date +%s`
+
+echo "Collection time was a total of `expr $finish - $start` seconds"
+echo "Collection time was a total of `expr $finish - $start` seconds" >> $location/tools/hostname >> $location/data/$collect/case.dat
+
+
+
